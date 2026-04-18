@@ -1,0 +1,1110 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Não Pifou — Calculadora de Compra</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --surface: #ffffff;
+    --surface2: #f5f5f7;
+    --border: #d2d2d7;
+    --border-light: #e8e8ed;
+    --accent: #FF3B30;
+    --accent-soft: rgba(255,59,48,0.08);
+    --blue: #0071e3;
+    --blue-soft: rgba(0,113,227,0.08);
+    --green: #34c759;
+    --green-soft: rgba(52,199,89,0.10);
+    --yellow: #ff9f0a;
+    --yellow-soft: rgba(255,159,10,0.10);
+    --text: #1d1d1f;
+    --text2: #424245;
+    --muted: #86868b;
+    --muted2: #c7c7cc;
+    --shadow: 0 2px 12px rgba(0,0,0,0.06), 0 1px 3px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 32px rgba(0,0,0,0.10), 0 2px 8px rgba(0,0,0,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+  body { background: var(--bg); color: var(--text); font-family: 'Figtree', -apple-system, BlinkMacSystemFont, sans-serif; min-height: 100vh; padding: 20px 16px 100px; max-width: 480px; margin: 0 auto; }
+
+  /* LOADING */
+  #loading-screen { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 500; gap: 14px; }
+  .spinner { width: 28px; height: 28px; border: 2.5px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #loading-screen p { font-size: 13px; color: var(--muted); font-weight: 400; letter-spacing: -0.1px; }
+  .logo-load { font-size: 11px; font-weight: 700; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); }
+
+  /* ERROR */
+  #error-banner { display: none; background: #fff5f5; border: 1px solid #ffd0ce; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #c0392b; }
+  #error-banner.visible { display: block; }
+
+  /* HEADER */
+  header { text-align: center; margin-bottom: 32px; padding-top: 12px; }
+  .logo { font-size: 10px; font-weight: 600; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+  header h1 { font-size: clamp(28px, 7vw, 36px); font-weight: 700; line-height: 1.05; letter-spacing: -0.5px; color: var(--text); }
+  header p { margin-top: 6px; font-size: 15px; color: var(--muted); font-weight: 400; letter-spacing: -0.1px; }
+
+  /* STEP LABEL */
+  .step-label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+
+  /* SECTION CARD */
+  .section { background: var(--surface); border-radius: 18px; padding: 20px; margin-bottom: 12px; box-shadow: var(--shadow); border: none; }
+  .section-title { font-size: 17px; font-weight: 600; margin-bottom: 16px; color: var(--text); letter-spacing: -0.2px; }
+
+  /* SEARCH */
+  .search-wrap { position: relative; margin-bottom: 10px; }
+  .search-wrap input { width: 100%; padding: 12px 16px 12px 40px; background: var(--surface2); border: 1.5px solid var(--border-light); border-radius: 12px; color: var(--text); font-family: 'Figtree', sans-serif; font-size: 15px; outline: none; transition: all 0.2s; font-weight: 400; }
+  .search-wrap input:focus { border-color: var(--blue); background: white; box-shadow: 0 0 0 3px rgba(0,113,227,0.12); }
+  .search-wrap input::placeholder { color: var(--muted2); }
+  .search-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+  .model-list { max-height: 220px; overflow-y: auto; border-radius: 12px; border: 1.5px solid var(--border-light); background: white; display: none; box-shadow: var(--shadow-lg); margin-top: 4px; }
+  .model-list.visible { display: block; }
+  .model-list::-webkit-scrollbar { width: 4px; }
+  .model-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  .model-item { padding: 11px 16px; font-size: 14px; cursor: pointer; border-bottom: 1px solid var(--border-light); transition: background 0.12s; color: var(--text); font-weight: 400; }
+  .model-item:last-child { border-bottom: none; }
+  .model-item:hover { background: var(--surface2); }
+  .model-item.selected { color: var(--blue); font-weight: 600; }
+
+  .selected-model-display { display: none; align-items: center; justify-content: space-between; padding: 12px 14px; background: var(--blue-soft); border: 1.5px solid rgba(0,113,227,0.2); border-radius: 12px; gap: 10px; }
+  .selected-model-display.visible { display: flex; }
+  .selected-model-display .model-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .selected-model-display .base-tag { font-size: 12px; background: var(--blue); color: white; padding: 3px 10px; border-radius: 20px; font-weight: 600; white-space: nowrap; }
+  .change-btn { font-size: 13px; color: var(--blue); cursor: pointer; font-weight: 500; white-space: nowrap; }
+
+  /* BATTERY */
+  .battery-options { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .bat-opt { padding: 14px 6px; background: var(--surface2); border: 1.5px solid var(--border-light); border-radius: 14px; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .bat-opt:hover { border-color: var(--border); background: white; }
+  .bat-opt.selected { border-color: var(--green); background: var(--green-soft); }
+  .bat-opt.selected-warn { border-color: var(--yellow); background: var(--yellow-soft); }
+  .bat-opt .bat-icon { font-size: 22px; margin-bottom: 5px; }
+  .bat-opt .bat-label { font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--text2); }
+  .bat-opt .bat-sub { font-size: 10px; color: var(--muted); margin-top: 3px; font-weight: 400; }
+  .bat-opt.selected .bat-label { color: var(--green); }
+  .bat-opt.selected-warn .bat-label { color: var(--yellow); }
+
+  /* DEFECTS */
+  .defects-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .defect-item { display: flex; align-items: center; gap: 10px; padding: 11px 12px; background: var(--surface2); border: 1.5px solid var(--border-light); border-radius: 12px; cursor: pointer; transition: all 0.18s; user-select: none; }
+  .defect-item:hover { background: white; border-color: var(--border); }
+  .defect-item.active { border-color: var(--accent); background: var(--accent-soft); }
+  .defect-item .checkbox { width: 20px; height: 20px; border: 1.5px solid var(--muted2); border-radius: 6px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .defect-item.active .checkbox { background: var(--accent); border-color: var(--accent); }
+  .defect-item.active .checkbox::after { content: '✓'; color: white; font-size: 12px; font-weight: 700; }
+  .defect-info { flex: 1; min-width: 0; }
+  .defect-info .d-name { font-size: 12px; font-weight: 500; line-height: 1.3; color: var(--text); }
+  .defect-info .d-discount { font-size: 11px; color: var(--accent); font-weight: 600; margin-top: 1px; }
+  .defect-info .d-discount.zero { color: var(--muted); }
+
+  /* RESULT */
+  .result-card { background: white; border-radius: 20px; padding: 24px 20px; margin-top: 12px; box-shadow: var(--shadow-lg); border: none; }
+  .result-label { font-size: 11px; font-weight: 600; letter-spacing: 0.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .result-price { font-size: clamp(40px,10vw,54px); font-weight: 700; line-height: 1; letter-spacing: -1px; color: var(--green); }
+  .result-price.low { color: var(--yellow); }
+  .result-price.negative { color: var(--accent); }
+  .result-breakdown { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border-light); display: flex; flex-direction: column; gap: 8px; }
+  .breakdown-row { display: flex; justify-content: space-between; font-size: 13px; }
+  .breakdown-row .label { color: var(--muted); font-weight: 400; }
+  .breakdown-row .val { font-weight: 500; color: var(--text); }
+  .breakdown-row .val.neg { color: var(--accent); }
+  .breakdown-total { display: flex; justify-content: space-between; font-size: 15px; font-weight: 600; padding-top: 10px; border-top: 1px solid var(--border-light); margin-top: 4px; color: var(--text); }
+  .divider { height: 1px; background: var(--border-light); margin: 6px 0; }
+  .tag-pill { display: inline-flex; align-items: center; gap: 4px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+  .tag-bad { background: var(--accent-soft); color: var(--accent); }
+
+  .reset-btn { display: block; width: 100%; margin-top: 12px; padding: 14px; background: var(--surface2); border: 1.5px solid var(--border-light); border-radius: 14px; color: var(--muted); font-family: 'Figtree', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s; text-align: center; }
+  .reset-btn:hover { background: white; border-color: var(--border); color: var(--text); }
+  .no-results { padding: 16px; text-align: center; color: var(--muted); font-size: 14px; }
+
+  /* ADMIN FAB */
+  .admin-fab { position: fixed; bottom: 24px; right: 20px; width: 44px; height: 44px; background: white; border: 1px solid var(--border); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 18px; z-index: 100; box-shadow: var(--shadow); transition: box-shadow 0.2s; }
+  .admin-fab:hover { box-shadow: var(--shadow-lg); }
+
+  /* MODAL */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: flex-end; justify-content: center; backdrop-filter: blur(4px); }
+  .modal-overlay.open { display: flex; }
+  .modal-sheet { background: white; border-radius: 20px 20px 0 0; width: 100%; max-width: 600px; max-height: 92vh; display: flex; flex-direction: column; overflow: hidden; animation: slideUp 0.3s cubic-bezier(0.34,1.56,0.64,1); }
+  @keyframes slideUp { from { transform: translateY(80px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal-header { padding: 18px 20px 14px; border-bottom: 1px solid var(--border-light); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .modal-header h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.2px; color: var(--text); }
+  .modal-close { width: 30px; height: 30px; background: var(--surface2); border: none; border-radius: 50%; cursor: pointer; color: var(--muted); font-size: 14px; display: flex; align-items: center; justify-content: center; transition: background 0.15s; }
+  .modal-close:hover { background: var(--border-light); }
+  .modal-body { overflow-y: auto; flex: 1; padding: 20px; }
+  .modal-body::-webkit-scrollbar { width: 4px; }
+  .modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  /* PIN */
+  #admin-login { text-align: center; padding: 10px 0 20px; }
+  #admin-login p { font-size: 14px; color: var(--muted); margin-bottom: 20px; }
+  .pin-display { display: flex; gap: 12px; justify-content: center; margin-bottom: 24px; }
+  .pin-dot { width: 14px; height: 14px; border-radius: 50%; background: var(--border-light); transition: background 0.15s; }
+  .pin-dot.filled { background: var(--accent); }
+  .pin-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; max-width: 240px; margin: 0 auto; }
+  .pin-btn { padding: 16px 0; background: var(--surface2); border: 1px solid var(--border-light); border-radius: 14px; color: var(--text); font-family: 'Figtree', sans-serif; font-size: 20px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .pin-btn:hover { background: white; border-color: var(--border); }
+  .pin-btn:active { transform: scale(0.96); }
+  .pin-btn.del { font-size: 14px; color: var(--muted); }
+  .pin-error { color: var(--accent); font-size: 13px; margin-top: 12px; min-height: 20px; }
+
+  /* ADMIN TABS */
+  .admin-tabs { display: flex; flex-shrink: 0; border-bottom: 1px solid var(--border-light); overflow-x: auto; padding: 0 20px; background: white; }
+  .admin-tab { padding: 12px 16px; font-size: 13px; font-weight: 500; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s; }
+  .admin-tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  #admin-panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  #admin-panel.open { display: flex; }
+
+  /* ADMIN FIELDS */
+  .admin-search { position: relative; margin-bottom: 14px; }
+  .admin-search input { width: 100%; padding: 10px 16px 10px 36px; background: var(--surface2); border: 1px solid var(--border-light); border-radius: 10px; color: var(--text); font-family: 'Figtree', sans-serif; font-size: 13px; outline: none; }
+  .admin-search input:focus { border-color: var(--blue); }
+  .admin-search input::placeholder { color: var(--muted2); }
+  .admin-search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+  .admin-model-row { background: var(--surface2); border: 1px solid var(--border-light); border-radius: 14px; margin-bottom: 8px; overflow: hidden; }
+  .admin-model-header { display: flex; align-items: center; justify-content: space-between; padding: 13px 16px; cursor: pointer; gap: 10px; }
+  .admin-model-header:hover { background: white; }
+  .admin-model-name { font-size: 13px; font-weight: 500; flex: 1; color: var(--text); }
+  .admin-model-base { font-size: 12px; color: var(--blue); font-weight: 600; white-space: nowrap; }
+  .admin-chevron { color: var(--muted2); font-size: 10px; transition: transform 0.2s; }
+  .admin-model-row.expanded .admin-chevron { transform: rotate(180deg); }
+  .admin-model-fields { display: none; padding: 0 16px 14px; border-top: 1px solid var(--border-light); }
+  .admin-model-row.expanded .admin-model-fields { display: block; }
+  .field-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+  .field-item { display: flex; flex-direction: column; gap: 4px; }
+  .field-item.full { grid-column: 1 / -1; }
+  .field-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.8px; font-weight: 600; }
+  .field-input { padding: 9px 12px; background: white; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-family: 'Figtree', sans-serif; font-size: 14px; font-weight: 500; outline: none; transition: all 0.15s; width: 100%; }
+  .field-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(0,113,227,0.10); }
+  .save-row { display: flex; justify-content: flex-end; margin-top: 12px; gap: 8px; }
+  .btn-save { padding: 9px 20px; background: var(--accent); border: none; border-radius: 10px; color: white; font-family: 'Figtree', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; transition: opacity 0.15s; }
+  .btn-save:hover { opacity: 0.85; }
+  .btn-save:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-cancel-edit { padding: 9px 14px; background: transparent; border: 1px solid var(--border); border-radius: 10px; color: var(--muted); font-family: 'Figtree', sans-serif; font-size: 13px; cursor: pointer; }
+
+  /* TOAST */
+  .save-toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%) translateY(16px); background: var(--text); color: white; font-weight: 600; font-size: 13px; padding: 10px 20px; border-radius: 20px; opacity: 0; transition: all 0.3s; pointer-events: none; z-index: 999; white-space: nowrap; }
+  .save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .save-toast.error { background: var(--accent); }
+
+  .admin-logout-btn { display: block; width: 100%; padding: 12px; background: transparent; border: 1.5px solid var(--border-light); border-radius: 12px; color: var(--muted); font-family: 'Figtree', sans-serif; font-size: 14px; cursor: pointer; margin-top: 20px; text-align: center; transition: all 0.2s; }
+  .admin-logout-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .sync-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .sync-dot.syncing { background: var(--yellow); animation: pulse 1s infinite; }
+  .sync-dot.error { background: var(--accent); }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-6px)} 40%,80%{transform:translateX(6px)} }
+
+  /* PAGE TABS */
+  .page-tabs { display:flex; gap:0; margin-bottom:20px; background:white; border-radius:14px; padding:4px; box-shadow: var(--shadow); }
+  .page-tab { flex:1; padding:10px 8px; text-align:center; font-family:'Figtree',sans-serif; font-size:13px; font-weight:600; color:var(--muted); cursor:pointer; border-radius:10px; transition:all 0.2s; letter-spacing:-0.1px; }
+  .page-tab.active { background:var(--accent); color:white; box-shadow: 0 2px 8px rgba(255,59,48,0.25); }
+  .page { display:none; }
+  .page.active { display:block; }
+
+  /* PARCELAMENTO */
+  .valor-input-wrap { position:relative; margin-bottom:16px; }
+  .valor-input-wrap span { position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:16px; font-weight:600; color:var(--muted); pointer-events:none; }
+  .valor-input-wrap input { width:100%; padding:16px 16px 16px 48px; background:var(--surface2); border:1.5px solid var(--border-light); border-radius:14px; color:var(--text); font-family:'Figtree',sans-serif; font-size:24px; font-weight:700; outline:none; transition:all 0.2s; letter-spacing:-0.5px; }
+  .valor-input-wrap input:focus { border-color:var(--blue); background:white; box-shadow:0 0 0 3px rgba(0,113,227,0.10); }
+  .valor-input-wrap input::placeholder { color:var(--muted2); font-size:20px; font-weight:400; }
+
+  .modo-toggle { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+  .modo-btn { padding:14px 8px; background:var(--surface2); border:1.5px solid var(--border-light); border-radius:14px; text-align:center; cursor:pointer; transition:all 0.2s; }
+  .modo-btn:hover { background:white; border-color:var(--border); }
+  .modo-btn.active { border-color:var(--accent); background:var(--accent-soft); }
+  .modo-btn .m-icon { font-size:22px; margin-bottom:4px; }
+  .modo-btn .m-label { font-size:12px; font-weight:600; color:var(--text2); letter-spacing:-0.1px; }
+  .modo-btn.active .m-label { color:var(--accent); }
+  .modo-btn .m-sub { font-size:10px; color:var(--muted); margin-top:2px; }
+
+  .debito-tag { display:inline-block; padding:5px 12px; background:var(--green-soft); color:var(--green); border-radius:20px; font-size:12px; font-weight:600; margin-bottom:12px; cursor:pointer; border: 1px solid rgba(52,199,89,0.2); }
+
+  .bandeiras-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:16px; }
+  .bandeira-btn { padding:12px 4px; background:var(--surface2); border:1.5px solid var(--border-light); border-radius:12px; text-align:center; cursor:pointer; transition:all 0.2s; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .bandeira-btn:hover { background:white; border-color:var(--border); }
+  .bandeira-btn.active { border-color:var(--accent); background:var(--accent-soft); }
+  .bandeira-btn .b-icon { font-size:22px; }
+  .bandeira-btn .b-name { font-size:9px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.3px; }
+  .bandeira-btn.active .b-name { color:var(--accent); }
+
+  /* PARCELAS TABLE */
+  .parcelas-table { width:100%; border-collapse:collapse; }
+  .parcelas-table thead th { font-size:11px; font-weight:600; letter-spacing:0.5px; text-transform:uppercase; color:var(--muted); padding:0 8px 12px; text-align:left; }
+  .parcelas-table thead th:last-child { text-align:right; }
+  .parcelas-table tbody tr { border-top:1px solid var(--border-light); cursor:pointer; transition:background 0.12s; }
+  .parcelas-table tbody tr:hover { background:var(--surface2); }
+  .parcelas-table tbody tr.selected-row { background:var(--accent-soft); }
+  .parcelas-table td { padding:12px 8px; font-size:14px; }
+  .parcelas-table td:first-child { font-weight:700; font-size:14px; color:var(--text); }
+  .parcelas-table td:nth-child(2) { color:var(--muted); font-size:12px; }
+  .parcelas-table td:nth-child(3) { font-weight:500; color:var(--text2); }
+  .parcelas-table td:last-child { text-align:right; font-weight:700; color:var(--green); font-size:15px; }
+  .parcelas-table tr.selected-row td:first-child { color:var(--accent); }
+  .parcelas-table tr.selected-row td:last-child { color:var(--accent); }
+
+  /* WHATSAPP */
+  .whatsapp-card { background:#f0faf3; border:1.5px solid #b7e4c7; border-radius:16px; padding:18px; margin-top:16px; display:none; }
+  .whatsapp-card.visible { display:block; }
+  .whatsapp-label { font-size:11px; font-weight:700; letter-spacing:0.5px; text-transform:uppercase; color:#2d9e58; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .whatsapp-preview { background:white; border-radius:12px; padding:14px; font-size:13px; line-height:1.8; color:var(--text2); white-space:pre-wrap; font-family:'Figtree',sans-serif; margin-bottom:12px; border:1px solid #d4edda; }
+  .copy-btn { display:flex; align-items:center; justify-content:center; gap:8px; width:100%; padding:13px; background:#25D366; border:none; border-radius:12px; color:white; font-family:'Figtree',sans-serif; font-size:14px; font-weight:600; cursor:pointer; transition:opacity 0.2s; }
+  .copy-btn:hover { opacity:0.9; }
+
+  .info-fields { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+  .info-field-wrap { display:flex; flex-direction:column; gap:5px; }
+  .info-field-wrap.full { grid-column:1/-1; }
+  .info-field-label { font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; font-weight:600; }
+  .info-field { width:100%; padding:10px 12px; background:var(--surface2); border:1.5px solid var(--border-light); border-radius:10px; color:var(--text); font-family:'Figtree',sans-serif; font-size:14px; outline:none; transition:all 0.2s; }
+  .info-field:focus { border-color:var(--blue); background:white; }
+  .info-field::placeholder { color:var(--muted2); }
+</style>
+</head>
+<body>
+
+<div id="loading-screen">
+  <div class="logo-load">Não Pifou</div>
+  <div class="spinner"></div>
+  <p>Carregando preços...</p>
+</div>
+
+<div id="error-banner"></div>
+
+<div class="page-tabs">
+  <div class="page-tab active" onclick="switchPage('compra')">📱 Compra</div>
+  <div class="page-tab" onclick="switchPage('parcelas')">💳 Parcelamento</div>
+</div>
+
+<div class="page active" id="page-compra">
+<header>
+  <div class="logo">Não Pifou</div>
+  <h1>Calculadora<br>de Compra</h1>
+  <p>Selecione o modelo e marque os defeitos</p>
+</header>
+
+<div class="section" id="section-model">
+  <div class="step-label">Passo 1</div>
+  <div class="section-title">Qual é o modelo?</div>
+  <div id="model-picker">
+    <div class="search-wrap">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="model-search" placeholder="Buscar modelo... ex: 15 Pro Max 256" autocomplete="off">
+    </div>
+    <div class="model-list" id="model-list"></div>
+  </div>
+  <div class="selected-model-display" id="selected-display">
+    <div><div class="model-name" id="disp-model-name">—</div></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
+      <div class="base-tag" id="disp-base-price">R$ —</div>
+      <span class="change-btn" id="change-model-btn">trocar</span>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="section-battery" style="display:none">
+  <div class="step-label">Passo 2</div>
+  <div class="section-title">Estado da bateria</div>
+  <div class="battery-options">
+    <div class="bat-opt" id="bat-ok" onclick="setBattery('ok')">
+      <div class="bat-icon">🟢</div><div class="bat-label">Acima<br>de 85%</div><div class="bat-sub">Sem desconto</div>
+    </div>
+    <div class="bat-opt" id="bat-85" onclick="setBattery('85')">
+      <div class="bat-icon">🟡</div><div class="bat-label">Entre<br>60–85%</div><div class="bat-sub" id="bat85-sub">−R$ ?</div>
+    </div>
+    <div class="bat-opt" id="bat-60" onclick="setBattery('60')">
+      <div class="bat-icon">🔴</div><div class="bat-label">Abaixo<br>de 60%</div><div class="bat-sub" id="bat60-sub">−R$ ?</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="section-defects" style="display:none">
+  <div class="step-label">Passo 3</div>
+  <div class="section-title">Defeitos presentes</div>
+  <div class="defects-grid" id="defects-grid"></div>
+</div>
+
+<div id="result-area"></div>
+
+</div><!-- end page-compra -->
+
+<!-- PAGE PARCELAMENTO -->
+<div class="page" id="page-parcelas">
+
+<div class="section">
+  <div class="step-label">Simulador</div>
+  <div class="section-title">Valor do aparelho</div>
+  <div class="valor-input-wrap">
+    <span>R$</span>
+    <input type="number" id="sim-valor" placeholder="0,00" oninput="renderParcelas()" inputmode="decimal">
+  </div>
+
+  <div class="section-title" style="margin-bottom:12px">Modo de pagamento</div>
+  <div class="modo-toggle">
+    <div class="modo-btn active" id="modo-maquininha" onclick="selectModo('maquininha')">
+      <div class="m-icon">📱</div>
+      <div class="m-label">Maquininha</div>
+      <div class="m-sub">Presencial · D+1</div>
+    </div>
+    <div class="modo-btn" id="modo-link" onclick="selectModo('link')">
+      <div class="m-icon">💻</div>
+      <div class="m-label">Link</div>
+      <div class="m-sub">Online</div>
+    </div>
+  </div>
+
+  <div class="section-title" style="margin-bottom:12px">Bandeira do cartão</div>
+  <div class="bandeiras-grid" id="bandeiras-container">
+    <!-- rendered by JS -->
+  </div>
+  <div id="debito-row" style="display:none">
+    <div class="debito-tag" id="debito-tag" style="cursor:pointer" onclick="toggleDebito()">
+      💳 Débito: <span id="debito-taxa-label">—</span> — clique para simular
+    </div>
+  </div>
+</div>
+
+<div class="section" id="sim-table-section" style="display:none">
+  <div class="step-label">Parcelas</div>
+  <div class="section-title" style="margin-bottom:14px">Selecione o parcelamento</div>
+  <table class="parcelas-table">
+    <thead><tr>
+      <th>Parcelas</th><th>Taxa</th><th>Total</th><th>Valor/x</th>
+    </tr></thead>
+    <tbody id="parcelas-tbody"></tbody>
+  </table>
+</div>
+
+<!-- WhatsApp message generator -->
+<div class="section" id="sim-whats-section" style="display:none">
+  <div class="step-label">Mensagem WhatsApp</div>
+  <div class="section-title" style="margin-bottom:14px">Dados do anúncio</div>
+  <div class="info-fields">
+    <div class="info-field-wrap full">
+      <span class="info-field-label">Modelo do aparelho</span>
+      <input class="info-field" id="wa-modelo" type="text" placeholder="ex: iPhone 15 256GB" oninput="renderWhats()">
+    </div>
+    <div class="info-field-wrap">
+      <span class="info-field-label">Cor</span>
+      <input class="info-field" id="wa-cor" type="text" placeholder="ex: Rosa" oninput="renderWhats()">
+    </div>
+    <div class="info-field-wrap">
+      <span class="info-field-label">Bateria %</span>
+      <input class="info-field" id="wa-bateria" type="number" placeholder="ex: 86" oninput="renderWhats()">
+    </div>
+    <div class="info-field-wrap">
+      <span class="info-field-label">Código interno</span>
+      <input class="info-field" id="wa-codigo" type="text" placeholder="ex: 15396" oninput="renderWhats()">
+    </div>
+    <div class="info-field-wrap">
+      <span class="info-field-label">Garantia (meses)</span>
+      <input class="info-field" id="wa-garantia" type="number" placeholder="6" value="6" oninput="renderWhats()">
+    </div>
+  </div>
+
+  <div class="whatsapp-card visible" id="whats-card">
+    <div class="whatsapp-label">💬 Prévia da mensagem</div>
+    <div class="whatsapp-preview" id="whats-preview">Preencha os campos acima...</div>
+    <button class="copy-btn" id="copy-btn" onclick="copyWhats()">
+      <span>📋</span> Copiar para WhatsApp
+    </button>
+  </div>
+</div>
+
+</div><!-- end page-parcelas -->
+
+<div class="admin-fab" onclick="openAdminModal()" title="Editar preços">⚙️</div>
+<div class="save-toast" id="save-toast"></div>
+
+<div class="modal-overlay" id="admin-overlay">
+  <div class="modal-sheet">
+    <div class="modal-header">
+      <h2 id="modal-title">🔒 Área Admin</h2>
+      <div class="modal-close" onclick="closeAdminModal()">✕</div>
+    </div>
+    <div class="modal-body" id="admin-login-body">
+      <div id="admin-login">
+        <p>Digite a senha para editar os preços</p>
+        <div class="pin-display" id="pin-display">
+          <div class="pin-dot" id="pd0"></div><div class="pin-dot" id="pd1"></div>
+          <div class="pin-dot" id="pd2"></div><div class="pin-dot" id="pd3"></div>
+        </div>
+        <div class="pin-grid">
+          <div class="pin-btn" onclick="pinPress('1')">1</div><div class="pin-btn" onclick="pinPress('2')">2</div><div class="pin-btn" onclick="pinPress('3')">3</div>
+          <div class="pin-btn" onclick="pinPress('4')">4</div><div class="pin-btn" onclick="pinPress('5')">5</div><div class="pin-btn" onclick="pinPress('6')">6</div>
+          <div class="pin-btn" onclick="pinPress('7')">7</div><div class="pin-btn" onclick="pinPress('8')">8</div><div class="pin-btn" onclick="pinPress('9')">9</div>
+          <div class="pin-btn" style="visibility:hidden"></div><div class="pin-btn" onclick="pinPress('0')">0</div><div class="pin-btn del" onclick="pinDel()">⌫</div>
+        </div>
+        <div class="pin-error" id="pin-error"></div>
+      </div>
+    </div>
+    <div id="admin-panel">
+      <div class="admin-tabs">
+        <div class="admin-tab active" onclick="setAdminTab('base')">Preços Base</div>
+        <div class="admin-tab" onclick="setAdminTab('descontos')">Descontos por Defeito</div>
+        <div class="admin-tab" onclick="setAdminTab('taxas')">Taxas Cartão</div>
+      </div>
+      <div class="modal-body" id="admin-panel-body"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── SUPABASE ─────────────────────────────────────────────────
+const SB_URL = 'https://lfjuwfpltjbjjrsnmrwq.supabase.co';
+const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmanV3ZnBsdGpiampyc25tcndxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwODkwMzYsImV4cCI6MjA5MTY2NTAzNn0.Y31GMo8DGOqT6bevI5qzN2R2lFe_SQEnyztpK2BB9eI';
+
+async function sbFetch(path, opts = {}) {
+  const res = await fetch(`${SB_URL}/rest/v1/${path}`, {
+    ...opts,
+    headers: {
+      'apikey': SB_KEY, 'Authorization': `Bearer ${SB_KEY}`,
+      'Content-Type': 'application/json',
+      ...(opts.headers || {})
+    }
+  });
+  if (!res.ok) throw new Error(await res.text());
+  const t = await res.text();
+  return t ? JSON.parse(t) : null;
+}
+
+async function loadPrices() {
+  const rows = await sbFetch('prices?select=*');
+  const d = {};
+  rows.forEach(r => { d[r.model] = { base: r.base_price, descontos: r.discounts }; });
+  return d;
+}
+
+async function upsertPrice(model, base_price, discounts) {
+  await sbFetch('prices', {
+    method: 'POST',
+    headers: { 'Prefer': 'resolution=merge-duplicates' },
+    body: JSON.stringify({ model, base_price, discounts })
+  });
+}
+
+// ── FALLBACK DATA ─────────────────────────────────────────────
+const FALLBACK = {"iPhone 17 Pro Max 256GB":{"base":6700,"descontos":{"bateria_85":520,"bateria_60":520,"tela_trincada":2000,"tela_manchada":2000,"tela_quebrada":2000,"camera_traseira":1100,"camera_frontal":800,"conector":450,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 Pro Max 512GB":{"base":6900,"descontos":{"bateria_85":520,"bateria_60":520,"tela_trincada":2000,"tela_manchada":2000,"tela_quebrada":2000,"camera_traseira":1100,"camera_frontal":800,"conector":450,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 Pro Max 1TB":{"base":7100,"descontos":{"bateria_85":520,"bateria_60":520,"tela_trincada":2000,"tela_manchada":2000,"tela_quebrada":2000,"camera_traseira":1100,"camera_frontal":800,"conector":450,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 Pro 256GB":{"base":6100,"descontos":{"bateria_85":380,"bateria_60":380,"tela_trincada":1500,"tela_manchada":1500,"tela_quebrada":1500,"camera_traseira":1100,"camera_frontal":800,"conector":450,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 Pro 512GB":{"base":6300,"descontos":{"bateria_85":380,"bateria_60":380,"tela_trincada":1500,"tela_manchada":1500,"tela_quebrada":1500,"camera_traseira":1100,"camera_frontal":800,"conector":450,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 Pro 1TB":{"base":6500,"descontos":{"bateria_85":380,"bateria_60":380,"tela_trincada":990,"tela_manchada":990,"tela_quebrada":990,"camera_traseira":1100,"camera_frontal":800,"conector":450,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 256GB":{"base":4600,"descontos":{"bateria_85":380,"bateria_60":380,"tela_trincada":890,"tela_manchada":890,"tela_quebrada":890,"camera_traseira":900,"camera_frontal":800,"conector":380,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 17 512GB":{"base":4700,"descontos":{"bateria_85":380,"bateria_60":380,"tela_trincada":890,"tela_manchada":890,"tela_quebrada":890,"camera_traseira":900,"camera_frontal":800,"conector":380,"tampa_traseira":800,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro Max 256GB":{"base":4850,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":1400,"tela_manchada":1400,"tela_quebrada":1400,"camera_traseira":900,"camera_frontal":800,"conector":420,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro Max 512GB":{"base":4950,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":1400,"tela_manchada":1400,"tela_quebrada":1400,"camera_traseira":900,"camera_frontal":800,"conector":420,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro Max 1TB":{"base":5100,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":1400,"tela_manchada":1400,"tela_quebrada":1400,"camera_traseira":900,"camera_frontal":800,"conector":420,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro 128GB":{"base":4100,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":920,"tela_manchada":920,"tela_quebrada":920,"camera_traseira":800,"camera_frontal":800,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro 256GB":{"base":4250,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":920,"tela_manchada":920,"tela_quebrada":920,"camera_traseira":800,"camera_frontal":800,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro 512GB":{"base":4300,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":920,"tela_manchada":920,"tela_quebrada":920,"camera_traseira":800,"camera_frontal":800,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Pro 1TB":{"base":4400,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":920,"tela_manchada":920,"tela_quebrada":920,"camera_traseira":800,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Plus 128GB":{"base":3600,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":880,"tela_manchada":880,"tela_quebrada":880,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Plus 256GB":{"base":3650,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":880,"tela_manchada":880,"tela_quebrada":880,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 Plus 512GB":{"base":3650,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":880,"tela_manchada":880,"tela_quebrada":880,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 128GB":{"base":3500,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 256GB":{"base":3650,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16 512GB":{"base":3750,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 16e 128GB":{"base":1300,"descontos":{"bateria_85":260,"bateria_60":260,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":700,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro Max 256GB":{"base":3700,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":980,"tela_manchada":980,"tela_quebrada":980,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro Max 512GB":{"base":3800,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":980,"tela_manchada":980,"tela_quebrada":980,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro Max 1TB":{"base":3900,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":980,"tela_manchada":980,"tela_quebrada":980,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro 128GB":{"base":2850,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro 256GB":{"base":2950,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro 512GB":{"base":3050,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":600,"camera_frontal":600,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Pro 1TB":{"base":3150,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":600,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Plus 128GB":{"base":2600,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Plus 256GB":{"base":2700,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 Plus 512GB":{"base":2800,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":680,"tela_manchada":680,"tela_quebrada":680,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 128GB":{"base":2500,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 256GB":{"base":2600,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 15 512GB":{"base":2700,"descontos":{"bateria_85":220,"bateria_60":220,"tela_trincada":620,"tela_manchada":620,"tela_quebrada":620,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":600,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro Max 128GB":{"base":2800,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":900,"tela_manchada":900,"tela_quebrada":900,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro Max 256GB":{"base":2900,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":900,"tela_manchada":900,"tela_quebrada":900,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro Max 512GB":{"base":2950,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":900,"tela_manchada":900,"tela_quebrada":900,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro Max 1TB":{"base":3000,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":900,"tela_manchada":900,"tela_quebrada":900,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro 128GB":{"base":2450,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":550,"tela_manchada":550,"tela_quebrada":550,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro 256GB":{"base":2600,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":550,"tela_manchada":550,"tela_quebrada":550,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro 512GB":{"base":2700,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":550,"tela_manchada":550,"tela_quebrada":550,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Pro 1TB":{"base":2750,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":550,"tela_manchada":550,"tela_quebrada":550,"camera_traseira":500,"camera_frontal":400,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Plus 128GB":{"base":1900,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":470,"tela_manchada":470,"tela_quebrada":470,"camera_traseira":400,"camera_frontal":400,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Plus 256GB":{"base":1950,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":470,"tela_manchada":470,"tela_quebrada":470,"camera_traseira":400,"camera_frontal":400,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 Plus 512GB":{"base":2000,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":470,"tela_manchada":470,"tela_quebrada":470,"camera_traseira":400,"camera_frontal":400,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 128GB":{"base":1600,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":470,"tela_manchada":470,"tela_quebrada":470,"camera_traseira":400,"camera_frontal":400,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 256GB":{"base":1800,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":470,"tela_manchada":470,"tela_quebrada":470,"camera_traseira":400,"camera_frontal":400,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 14 512GB":{"base":1850,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":470,"tela_manchada":470,"tela_quebrada":470,"camera_traseira":400,"camera_frontal":500,"conector":380,"tampa_traseira":500,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro Max 128GB":{"base":2300,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":420,"tela_manchada":420,"tela_quebrada":420,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro Max 256GB":{"base":2500,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":420,"tela_manchada":420,"tela_quebrada":420,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro Max 512GB":{"base":2550,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":420,"tela_manchada":420,"tela_quebrada":420,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro Max 1TB":{"base":2650,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":420,"tela_manchada":420,"tela_quebrada":420,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro 128GB":{"base":2100,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro 256GB":{"base":2150,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro 512GB":{"base":2300,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":500,"camera_frontal":500,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Pro 1TB":{"base":2350,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":500,"camera_frontal":400,"conector":380,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 128GB":{"base":1500,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":400,"camera_frontal":400,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 256GB":{"base":1550,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":400,"camera_frontal":400,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 512GB":{"base":1600,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":380,"tela_manchada":380,"tela_quebrada":380,"camera_traseira":400,"camera_frontal":400,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Mini 128GB":{"base":1250,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":400,"camera_frontal":400,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 13 Mini 256GB":{"base":1300,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":400,"camera_frontal":500,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Pro Max 128GB":{"base":1800,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":500,"camera_frontal":500,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Pro Max 256GB":{"base":1850,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":500,"camera_frontal":500,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Pro Max 512GB":{"base":1900,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":500,"camera_frontal":500,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Pro 128GB":{"base":1300,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":500,"camera_frontal":500,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Pro 256GB":{"base":1350,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":500,"camera_frontal":500,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Pro 512GB":{"base":1400,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":500,"camera_frontal":350,"conector":300,"tampa_traseira":400,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 64GB":{"base":700,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":350,"camera_frontal":350,"conector":300,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 128GB":{"base":900,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":350,"camera_frontal":350,"conector":300,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 256GB":{"base":1100,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":360,"tela_manchada":360,"tela_quebrada":360,"camera_traseira":350,"camera_frontal":350,"conector":300,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Mini 64GB":{"base":500,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":280,"tela_manchada":280,"tela_quebrada":280,"camera_traseira":350,"camera_frontal":350,"conector":300,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Mini 128GB":{"base":700,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":280,"tela_manchada":280,"tela_quebrada":280,"camera_traseira":350,"camera_frontal":350,"conector":300,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 12 Mini 256GB":{"base":750,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":280,"tela_manchada":280,"tela_quebrada":280,"camera_traseira":350,"camera_frontal":400,"conector":300,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 Pro Max 64GB":{"base":700,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":240,"tela_manchada":240,"tela_quebrada":240,"camera_traseira":400,"camera_frontal":400,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 Pro Max 256GB":{"base":750,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":240,"tela_manchada":240,"tela_quebrada":240,"camera_traseira":400,"camera_frontal":400,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 Pro 64GB":{"base":600,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":220,"tela_manchada":220,"tela_quebrada":220,"camera_traseira":400,"camera_frontal":400,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 Pro 256GB":{"base":650,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":220,"tela_manchada":220,"tela_quebrada":220,"camera_traseira":400,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 64GB":{"base":300,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":180,"tela_manchada":180,"tela_quebrada":180,"camera_traseira":290,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 128GB":{"base":500,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":180,"tela_manchada":180,"tela_quebrada":180,"camera_traseira":290,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone 11 256GB":{"base":550,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":180,"tela_manchada":180,"tela_quebrada":180,"camera_traseira":290,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone XR 64GB":{"base":200,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":160,"tela_manchada":160,"tela_quebrada":160,"camera_traseira":290,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone XR 128GB":{"base":250,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":160,"tela_manchada":160,"tela_quebrada":160,"camera_traseira":290,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}},"iPhone XR 256GB":{"base":300,"descontos":{"bateria_85":160,"bateria_60":160,"tela_trincada":160,"tela_manchada":160,"tela_quebrada":160,"camera_traseira":290,"camera_frontal":290,"conector":225,"tampa_traseira":300,"alto_falante":350,"microfone":350,"contato_liquido":80,"sem_caixa":50,"manutencao_anterior":0,"peca_tela":50,"peca_bateria":50}}};
+
+const DEFECT_LABELS = {
+  tela_trincada:{label:'Tela Trincada',icon:'🪟'},tela_manchada:{label:'Tela Manchada',icon:'💧'},
+  tela_quebrada:{label:'Tela Quebrada',icon:'💥'},camera_traseira:{label:'Câmera Traseira',icon:'📷'},
+  camera_frontal:{label:'Câmera Frontal',icon:'🤳'},conector:{label:'Conector',icon:'🔌'},
+  tampa_traseira:{label:'Tampa Traseira',icon:'🔲'},alto_falante:{label:'Alto-falante',icon:'🔊'},
+  microfone:{label:'Microfone',icon:'🎙️'},contato_liquido:{label:'Contato c/ Líquido',icon:'💦'},
+  sem_caixa:{label:'Sem Caixa',icon:'📦'},manutencao_anterior:{label:'Manutenção Anterior',icon:'🔧'},
+  peca_tela:{label:'Peça Tela Trocada',icon:'🛠️'},peca_bateria:{label:'Peça Bat. Trocada',icon:'🔋'}
+};
+
+let DATA={}, MODELS=[], selectedModel=null, batteryState=null, activeDefects=new Set();
+
+// ── INIT ──────────────────────────────────────────────────────
+async function init() {
+  try {
+    const remote = await loadPrices();
+    // Separate taxas rows from price rows
+    const taxaKeys = Object.keys(remote).filter(k => k.startsWith('__taxas__'));
+    const priceKeys = Object.keys(remote).filter(k => !k.startsWith('__taxas__'));
+
+    taxaKeys.forEach(k => {
+      // format: __taxas__maquininha__visa  OR  __taxas__link__visa
+      const parts = k.replace('__taxas__', '').split('__');
+      if (parts.length === 2) {
+        const [modo, bandeira] = parts;
+        if (modo === 'maquininha' && TAXAS_MAQUININHA[bandeira]) TAXAS_MAQUININHA[bandeira] = remote[k].descontos;
+        if (modo === 'link' && TAXAS_LINK[bandeira]) TAXAS_LINK[bandeira] = remote[k].descontos;
+      } else {
+        // legacy single-bandeira key
+        const bandeira = parts[0];
+        if (TAXAS_MAQUININHA[bandeira]) TAXAS_MAQUININHA[bandeira] = remote[k].descontos;
+      }
+    });
+    TAXAS = selectedModo === 'maquininha' ? TAXAS_MAQUININHA : TAXAS_LINK;
+
+    const cleanRemote = {};
+    priceKeys.forEach(k => { cleanRemote[k] = remote[k]; });
+
+    if (priceKeys.length === 0) {
+      DATA = JSON.parse(JSON.stringify(FALLBACK));
+      await seedDatabase();
+    } else {
+      DATA = cleanRemote;
+    }
+  } catch(e) {
+    DATA = JSON.parse(JSON.stringify(FALLBACK));
+    showBanner('⚠️ Sem conexão com o banco. Usando preços locais.');
+  }
+  MODELS = Object.keys(DATA);
+  document.getElementById('loading-screen').style.display = 'none';
+  renderBandeiras();
+}
+
+async function seedDatabase() {
+  const rows = Object.entries(FALLBACK).map(([model,v]) => ({model, base_price:v.base, discounts:v.descontos}));
+  for (let i=0; i<rows.length; i+=20) {
+    await sbFetch('prices', { method:'POST', headers:{'Prefer':'resolution=merge-duplicates'}, body:JSON.stringify(rows.slice(i,i+20)) });
+  }
+}
+
+function showBanner(msg) {
+  const el = document.getElementById('error-banner');
+  el.textContent = msg; el.classList.add('visible');
+}
+
+// ── CALCULATOR ────────────────────────────────────────────────
+const searchInput = document.getElementById('model-search');
+const modelListEl = document.getElementById('model-list');
+const selectedDisplay = document.getElementById('selected-display');
+const modelPicker = document.getElementById('model-picker');
+
+function renderModelList(q) {
+  const matches = q ? MODELS.filter(m => m.toLowerCase().includes(q.toLowerCase())) : MODELS;
+  modelListEl.innerHTML = matches.length
+    ? matches.map(m => `<div class="model-item${m===selectedModel?' selected':''}" onclick="selectModel('${m.replace(/'/g,"\\'")}')">  ${m}</div>`).join('')
+    : '<div class="no-results">Nenhum modelo encontrado</div>';
+  modelListEl.classList.add('visible');
+}
+searchInput.addEventListener('input', () => renderModelList(searchInput.value));
+searchInput.addEventListener('focus', () => renderModelList(searchInput.value));
+document.addEventListener('click', e => { if (!document.getElementById('section-model').contains(e.target)) modelListEl.classList.remove('visible'); });
+
+function selectModel(name) {
+  selectedModel = name; batteryState = null; activeDefects.clear();
+  searchInput.value = ''; modelListEl.classList.remove('visible');
+  document.getElementById('disp-model-name').textContent = name;
+  document.getElementById('disp-base-price').textContent = `Base R$ ${DATA[name].base.toLocaleString('pt-BR')}`;
+  selectedDisplay.classList.add('visible'); modelPicker.style.display = 'none';
+  const d = DATA[name].descontos;
+  document.getElementById('bat85-sub').textContent = `−R$ ${d.bateria_85.toLocaleString('pt-BR')}`;
+  document.getElementById('bat60-sub').textContent = `−R$ ${d.bateria_60.toLocaleString('pt-BR')}`;
+  ['bat-ok','bat-85','bat-60'].forEach(id => document.getElementById(id).className = 'bat-opt');
+  document.getElementById('section-battery').style.display = '';
+  document.getElementById('section-defects').style.display = 'none';
+  renderResult();
+}
+
+document.getElementById('change-model-btn').addEventListener('click', () => {
+  selectedDisplay.classList.remove('visible'); modelPicker.style.display = '';
+  searchInput.focus();
+  document.getElementById('section-battery').style.display = 'none';
+  document.getElementById('section-defects').style.display = 'none';
+  selectedModel=null; batteryState=null; activeDefects.clear(); renderResult();
+});
+
+function setBattery(s) {
+  batteryState = s;
+  ['bat-ok','bat-85','bat-60'].forEach(id => document.getElementById(id).className = 'bat-opt');
+  if (s==='ok') document.getElementById('bat-ok').className='bat-opt selected';
+  else if (s==='85') document.getElementById('bat-85').className='bat-opt selected-warn';
+  else document.getElementById('bat-60').className='bat-opt selected-warn';
+  buildDefectsGrid(); document.getElementById('section-defects').style.display=''; renderResult();
+}
+
+function buildDefectsGrid() {
+  if (!selectedModel) return;
+  const d = DATA[selectedModel].descontos;
+  document.getElementById('defects-grid').innerHTML = Object.entries(DEFECT_LABELS).map(([key,info]) => {
+    const val = d[key]||0;
+    return `<div class="defect-item${activeDefects.has(key)?' active':''}" onclick="toggleDefect('${key}')">
+      <div class="checkbox"></div>
+      <div class="defect-info">
+        <div class="d-name">${info.icon} ${info.label}</div>
+        <div class="d-discount${val===0?' zero':''}">${val>0?'−R$ '+val.toLocaleString('pt-BR'):'Sem desconto'}</div>
+      </div></div>`;
+  }).join('');
+}
+
+function toggleDefect(key) {
+  const tg = ['tela_trincada','tela_manchada','tela_quebrada'];
+  if (activeDefects.has(key)) { activeDefects.delete(key); }
+  else { if (tg.includes(key)) tg.forEach(k => activeDefects.delete(k)); activeDefects.add(key); }
+  buildDefectsGrid(); renderResult();
+}
+
+function fmt(n) { return n.toLocaleString('pt-BR'); }
+
+function renderResult() {
+  const area = document.getElementById('result-area');
+  if (!selectedModel || !batteryState) { area.innerHTML=''; return; }
+  const d = DATA[selectedModel].descontos, base = DATA[selectedModel].base;
+  let total=0, bd=[];
+  if (batteryState==='85') { total+=d.bateria_85; bd.push({label:'🟡 Bateria 60–85%',val:d.bateria_85}); }
+  else if (batteryState==='60') { total+=d.bateria_60; bd.push({label:'🔴 Bateria < 60%',val:d.bateria_60}); }
+  activeDefects.forEach(k => { const v=d[k]||0; if(v>0){total+=v;bd.push({label:`${DEFECT_LABELS[k].icon} ${DEFECT_LABELS[k].label}`,val:v});} });
+  const final = base-total;
+  const pc = final<=0?'negative':final<base*0.4?'low':'';
+  area.innerHTML = `<div class="result-card">
+    <div class="result-label">Valor de Compra</div>
+    <div class="result-price ${pc}">R$ ${final>0?fmt(final):'0'}</div>
+    ${final<=0?`<div style="margin-top:8px"><span class="tag-pill tag-bad">⚠️ Valor negativo — recusar</span></div>`:''}
+    <div class="result-breakdown">
+      <div class="breakdown-row"><span class="label">Preço base</span><span class="val">R$ ${fmt(base)}</span></div>
+      ${bd.map(b=>`<div class="breakdown-row"><span class="label">${b.label}</span><span class="val neg">−R$ ${fmt(b.val)}</span></div>`).join('')}
+      <div class="divider"></div>
+      <div class="breakdown-total"><span>Total descontos</span><span style="color:var(--accent)">−R$ ${fmt(total)}</span></div>
+    </div></div>
+  <button class="reset-btn" onclick="resetAll()">↩ Nova avaliação</button>`;
+}
+
+function resetAll() {
+  selectedModel=null; batteryState=null; activeDefects.clear();
+  selectedDisplay.classList.remove('visible'); modelPicker.style.display='';
+  searchInput.value='';
+  document.getElementById('section-battery').style.display='none';
+  document.getElementById('section-defects').style.display='none';
+  document.getElementById('result-area').innerHTML='';
+}
+
+// ── ADMIN ─────────────────────────────────────────────────────
+const ADMIN_PIN = '1234'; // ← altere para sua senha
+let pinBuffer='', adminLoggedIn=false, adminTab='base', adminSearchQ='';
+
+function openAdminModal() { document.getElementById('admin-overlay').classList.add('open'); adminLoggedIn?showPanel():showLogin(); }
+function closeAdminModal() { document.getElementById('admin-overlay').classList.remove('open'); }
+document.getElementById('admin-overlay').addEventListener('click', e => { if(e.target===document.getElementById('admin-overlay')) closeAdminModal(); });
+
+function showLogin() {
+  document.getElementById('modal-title').textContent='🔒 Área Admin';
+  document.getElementById('admin-login-body').style.display='';
+  document.getElementById('admin-panel').classList.remove('open');
+  pinBuffer=''; updatePinDisplay(); document.getElementById('pin-error').textContent='';
+}
+function showPanel() {
+  document.getElementById('modal-title').textContent='⚙️ Editar Preços';
+  document.getElementById('admin-login-body').style.display='none';
+  document.getElementById('admin-panel').classList.add('open');
+  renderAdminTab();
+}
+
+function pinPress(d) {
+  if (pinBuffer.length>=4) return;
+  pinBuffer+=d; updatePinDisplay();
+  if (pinBuffer.length===4) {
+    setTimeout(() => {
+      if (pinBuffer===ADMIN_PIN) { adminLoggedIn=true; showPanel(); }
+      else {
+        document.getElementById('pin-error').textContent='Senha incorreta.';
+        pinBuffer=''; updatePinDisplay();
+        const dp=document.getElementById('pin-display');
+        dp.style.animation='none'; dp.offsetHeight; dp.style.animation='shake 0.3s ease';
+      }
+    }, 80);
+  }
+}
+function pinDel() { pinBuffer=pinBuffer.slice(0,-1); updatePinDisplay(); }
+function updatePinDisplay() { for(let i=0;i<4;i++) document.getElementById('pd'+i).classList.toggle('filled',i<pinBuffer.length); }
+
+function setAdminTab(tab) {
+  adminTab=tab; adminSearchQ='';
+  document.querySelectorAll('.admin-tab').forEach((el,i)=>el.classList.toggle('active',(i===0&&tab==='base')||(i===1&&tab==='descontos')||(i===2&&tab==='taxas')));
+  renderAdminTab();
+}
+
+function cssId(m) { return m.replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function renderAdminTab() {
+  if (adminTab === 'taxas') { renderTaxasTab(); return; }
+  const models = MODELS.filter(m => !adminSearchQ||m.toLowerCase().includes(adminSearchQ.toLowerCase()));
+  document.getElementById('admin-panel-body').innerHTML = `
+    <div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Conectado ao Supabase</span></div>
+    <div class="admin-search">
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color:var(--muted)"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" placeholder="Filtrar modelo..." value="${adminSearchQ}" oninput="adminSearchQ=this.value;renderAdminTab()" autocomplete="off">
+    </div>
+    ${models.map(m=>renderAdminRow(m)).join('')}
+    <button class="admin-logout-btn" onclick="adminLogout()">Sair da edição</button>`;
+}
+
+function renderAdminRow(m) {
+  const d=DATA[m];
+  const fields = adminTab==='base'
+    ? `<div class="field-item full"><span class="field-label">💰 Preço Base (R$)</span><input class="field-input" type="number" id="fi-${cssId(m)}-base" value="${d.base}" min="0"></div>`
+    : Object.entries(DEFECT_LABELS).map(([k,info])=>`<div class="field-item"><span class="field-label">${info.icon} ${info.label}</span><input class="field-input" type="number" id="fi-${cssId(m)}-${k}" value="${d.descontos[k]||0}" min="0"></div>`).join('');
+  return `<div class="admin-model-row" id="amr-${cssId(m)}">
+    <div class="admin-model-header" onclick="toggleAdminRow('${m.replace(/'/g,"\\'")}')">
+      <span class="admin-model-name">${m}</span>
+      <span class="admin-model-base">R$ ${d.base.toLocaleString('pt-BR')}</span>
+      <span class="admin-chevron">▼</span>
+    </div>
+    <div class="admin-model-fields">
+      <div class="field-grid">${fields}</div>
+      <div class="save-row">
+        <button class="btn-cancel-edit" onclick="toggleAdminRow('${m.replace(/'/g,"\\'")}')">Cancelar</button>
+        <button class="btn-save" id="sbtn-${cssId(m)}" onclick="saveModel('${m.replace(/'/g,"\\'")}')">Salvar</button>
+      </div>
+    </div></div>`;
+}
+
+function toggleAdminRow(m) { document.getElementById('amr-'+cssId(m))?.classList.toggle('expanded'); }
+
+async function saveModel(m) {
+  const btn = document.getElementById('sbtn-'+cssId(m));
+  if (btn) { btn.disabled=true; btn.textContent='Salvando…'; }
+  setSyncStatus('syncing','Salvando...');
+  const baseEl = document.getElementById(`fi-${cssId(m)}-base`);
+  if (baseEl) DATA[m].base = parseInt(baseEl.value)||0;
+  Object.keys(DEFECT_LABELS).forEach(k => { const el=document.getElementById(`fi-${cssId(m)}-${k}`); if(el) DATA[m].descontos[k]=parseInt(el.value)||0; });
+  try {
+    await upsertPrice(m, DATA[m].base, DATA[m].descontos);
+    setSyncStatus('ok','Salvo no Supabase ✓');
+    showToast('✓ Salvo com sucesso', false);
+  } catch(e) {
+    setSyncStatus('error','Erro ao salvar');
+    showToast('✗ Erro ao salvar — verifique a conexão', true);
+  }
+  const row = document.getElementById('amr-'+cssId(m));
+  if (row) { row.querySelector('.admin-model-base').textContent='R$ '+DATA[m].base.toLocaleString('pt-BR'); row.classList.remove('expanded'); }
+  if (btn) { btn.disabled=false; btn.textContent='Salvar'; }
+  renderResult();
+}
+
+function setSyncStatus(s,t) {
+  const dot=document.getElementById('sync-dot'), txt=document.getElementById('sync-text');
+  if(!dot||!txt) return;
+  dot.className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');
+  txt.textContent=t;
+}
+function showToast(msg,isErr) {
+  const t=document.getElementById('save-toast');
+  t.textContent=msg; t.className='save-toast'+(isErr?' error':'');
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500);
+}
+function adminLogout() { adminLoggedIn=false; closeAdminModal(); }
+
+init();
+
+// ── TAXAS ADMIN ───────────────────────────────────────────────
+function renderTaxasTab() {
+  // Show maquininha and link sections
+  const bandeiras = ['visa','master','elo','hipercard','amex'];
+  const modos = [{key:'maquininha', label:'📱 Maquininha (Presencial)', taxasObj: TAXAS_MAQUININHA},
+                 {key:'link',       label:'💻 Link de Pagamento',       taxasObj: TAXAS_LINK}];
+  const bandLabels = {visa:'Visa',master:'Mastercard',elo:'Elo',hipercard:'Hipercard',amex:'Amex'};
+  const bandIcons  = {visa:'💳',master:'🔴',elo:'🟡',hipercard:'🟠',amex:'🔵'};
+
+  let html = `<div class="sync-status"><div class="sync-dot" id="sync-dot"></div><span id="sync-text">Conectado ao Supabase</span></div>
+  <p style="font-size:12px;color:var(--muted);margin-bottom:16px">Edite as taxas de cada bandeira por número de parcelas (em %). 1x = 0 significa sem juros.</p>`;
+
+  modos.forEach(modo => {
+    html += `<div style="font-family:'Figtree',sans-serif;font-size:12px;font-weight:800;color:var(--text);margin:16px 0 8px">${modo.label}</div>`;
+    bandeiras.forEach(b => {
+      const rowId = `taxrow-${modo.key}-${b}`;
+      const maxN = Object.keys(modo.taxasObj[b]).filter(k=>k!=='debito').length;
+      let debitoField = '';
+      if (modo.key==='maquininha' && modo.taxasObj[b].debito != null) {
+        debitoField = `<div class="field-item full">
+          <span class="field-label">💳 Débito (%)</span>
+          <input class="field-input" type="number" step="0.01" min="0" id="taxa-${modo.key}-${b}-debito" value="${modo.taxasObj[b].debito}">
+        </div>`;
+      }
+      let parcFields = '';
+      for (let n = 1; n <= maxN; n++) {
+        parcFields += `<div class="field-item">
+          <span class="field-label">${n}x (%)</span>
+          <input class="field-input" type="number" step="0.01" min="0" id="taxa-${modo.key}-${b}-${n}" value="${modo.taxasObj[b][n]}">
+        </div>`;
+      }
+      html += `<div class="admin-model-row" id="${rowId}">
+        <div class="admin-model-header" onclick="toggleTaxaRow('${rowId}')">
+          <span class="admin-model-name">${bandIcons[b]} ${bandLabels[b]}</span>
+          <span class="admin-chevron">▼</span>
+        </div>
+        <div class="admin-model-fields">
+          <div class="field-grid">${debitoField}${parcFields}</div>
+          <div class="save-row">
+            <button class="btn-cancel-edit" onclick="toggleTaxaRow('${rowId}')">Cancelar</button>
+            <button class="btn-save" id="tbtn-${modo.key}-${b}" onclick="saveTaxas('${modo.key}','${b}')">Salvar</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+
+  html += `<button class="admin-logout-btn" onclick="adminLogout()">Sair da edição</button>`;
+  document.getElementById('admin-panel-body').innerHTML = html;
+}
+
+function toggleTaxaRow(id) {
+  document.getElementById(id)?.classList.toggle('expanded');
+}
+
+async function saveTaxas(modo, b) {
+  const btnId = 'tbtn-' + modo + '-' + b;
+  const btn = document.getElementById(btnId);
+  if (btn) { btn.disabled=true; btn.textContent='Salvando…'; }
+  setSyncStatus('syncing','Salvando taxas...');
+
+  const taxasObj = modo === 'maquininha' ? TAXAS_MAQUININHA : TAXAS_LINK;
+  const maxN = Object.keys(taxasObj[b]).filter(k=>k!=='debito').length;
+
+  for (let n = 1; n <= maxN; n++) {
+    const el = document.getElementById(`taxa-${modo}-${b}-${n}`);
+    if (el) taxasObj[b][n] = parseFloat(el.value) || 0;
+  }
+  // débito
+  const debitoEl = document.getElementById(`taxa-${modo}-${b}-debito`);
+  if (debitoEl) taxasObj[b].debito = parseFloat(debitoEl.value) || 0;
+
+  // Update active TAXAS if mode matches current
+  if (modo === selectedModo) TAXAS = taxasObj;
+
+  try {
+    await sbFetch('prices', {
+      method: 'POST',
+      headers: { 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({
+        model: '__taxas__' + modo + '__' + b,
+        base_price: 0,
+        discounts: taxasObj[b]
+      })
+    });
+    setSyncStatus('ok', 'Taxas salvas ✓');
+    showToast('✓ Taxas ' + b + ' (' + modo + ') salvas', false);
+  } catch(e) {
+    setSyncStatus('error','Erro ao salvar');
+    showToast('✗ Erro ao salvar', true);
+  }
+
+  const rowId = 'taxrow-' + modo + '-' + b;
+  document.getElementById(rowId)?.classList.remove('expanded');
+  if (btn) { btn.disabled=false; btn.textContent='Salvar'; }
+  renderBandeiras();
+}
+
+// ── PAGE SWITCH ───────────────────────────────────────────────
+function switchPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelectorAll('.page-tab').forEach((t, i) => {
+    if ((i===0&&page==='compra')||(i===1&&page==='parcelas')) t.classList.add('active');
+  });
+  window.scrollTo(0, 0);
+}
+
+// ── TAXAS POR BANDEIRA ────────────────────────────────────────
+// Taxas padrão de mercado (editáveis no admin futuramente)
+// MAQUININHA: taxas reais por bandeira (1x..12x; até 12 presencial)
+const TAXAS_MAQUININHA = {
+  visa:      { debito:2.37, 1:4.15, 2:6.39, 3:7.12, 4:7.85, 5:8.57, 6:9.28, 7:9.99, 8:10.69, 9:11.38, 10:12.06, 11:12.74, 12:13.40 },
+  master:    { debito:2.37, 1:4.15, 2:6.39, 3:7.12, 4:7.85, 5:8.57, 6:9.28, 7:9.99, 8:10.69, 9:11.38, 10:12.06, 11:12.74, 12:13.40 },
+  elo:       { debito:3.58, 1:5.91, 2:7.47, 3:8.20, 4:8.92, 5:9.63, 6:10.33, 7:11.03, 8:11.72, 9:12.41, 10:13.08, 11:13.75, 12:14.41 },
+  amex:      { debito:3.58, 1:5.91, 2:7.47, 3:8.20, 4:8.92, 5:9.63, 6:10.33, 7:11.03, 8:11.72, 9:12.41, 10:13.08, 11:13.75, 12:14.41 },
+  hipercard: { debito:null, 1:3.69, 2:4.49, 3:5.26, 4:6.03, 5:6.80, 6:7.56, 7:8.32, 8:9.07, 9:9.82, 10:10.56, 11:11.30, 12:12.03 }
+};
+
+// LINK DE PAGAMENTO: mesmas taxas para todas as bandeiras (até 12x)
+const TAXAS_LINK = {
+  visa:      { 1:5.20, 2:7.09, 3:8.01, 4:8.91, 5:9.80, 6:10.67, 7:13.59, 8:14.42, 9:15.25, 10:16.06, 11:16.87, 12:17.66 },
+  master:    { 1:5.20, 2:7.09, 3:8.01, 4:8.91, 5:9.80, 6:10.67, 7:13.59, 8:14.42, 9:15.25, 10:16.06, 11:16.87, 12:17.66 },
+  elo:       { 1:5.20, 2:7.09, 3:8.01, 4:8.91, 5:9.80, 6:10.67, 7:13.59, 8:14.42, 9:15.25, 10:16.06, 11:16.87, 12:17.66 },
+  amex:      { 1:5.20, 2:7.09, 3:8.01, 4:8.91, 5:9.80, 6:10.67, 7:13.59, 8:14.42, 9:15.25, 10:16.06, 11:16.87, 12:17.66 },
+  hipercard: { 1:5.20, 2:7.09, 3:8.01, 4:8.91, 5:9.80, 6:10.67, 7:13.59, 8:14.42, 9:15.25, 10:16.06, 11:16.87, 12:17.66 }
+};
+
+// Active TAXAS pointer (maquininha by default)
+let TAXAS = TAXAS_MAQUININHA;
+let selectedModo = 'maquininha';
+
+const BANDEIRA_LABEL = { visa:'Visa', master:'Mastercard', elo:'Elo', hipercard:'Hipercard', amex:'Amex' };
+
+let selectedBandeira = 'visa';
+let selectedParcela = null;
+let debitoMode = false;
+
+const BANDEIRAS_CONFIG = {
+  maquininha: [
+    {id:'visa',    icon:'💳', name:'Visa'},
+    {id:'master',  icon:'🔴', name:'Master'},
+    {id:'elo',     icon:'🟡', name:'Elo'},
+    {id:'hipercard',icon:'🟠',name:'Hiper'},
+    {id:'amex',    icon:'🔵', name:'Amex'}
+  ],
+  link: [
+    {id:'visa',    icon:'💳', name:'Visa'},
+    {id:'master',  icon:'🔴', name:'Master'},
+    {id:'elo',     icon:'🟡', name:'Elo'},
+    {id:'hipercard',icon:'🟠',name:'Hiper'},
+    {id:'amex',    icon:'🔵', name:'Amex'}
+  ]
+};
+
+function renderBandeiras() {
+  const container = document.getElementById('bandeiras-container');
+  const list = BANDEIRAS_CONFIG[selectedModo];
+  container.innerHTML = list.map(b =>
+    `<div class="bandeira-btn${selectedBandeira===b.id?' active':''}" onclick="selectBandeira('${b.id}')" id="bb-${b.id}">
+      <div class="b-icon">${b.icon}</div><div class="b-name">${b.name}</div>
+    </div>`
+  ).join('');
+
+  // Show débito row only for maquininha, and only if bandeira has débito
+  const hasDebito = selectedModo === 'maquininha' && TAXAS[selectedBandeira]?.debito != null;
+  const debitoRow = document.getElementById('debito-row');
+  if (debitoRow) {
+    debitoRow.style.display = hasDebito ? '' : 'none';
+    if (hasDebito) {
+      document.getElementById('debito-taxa-label').textContent = TAXAS[selectedBandeira].debito.toFixed(2).replace('.',',') + '%';
+    }
+  }
+}
+
+function selectModo(modo) {
+  selectedModo = modo;
+  TAXAS = modo === 'maquininha' ? TAXAS_MAQUININHA : TAXAS_LINK;
+  debitoMode = false;
+  selectedParcela = null;
+  document.getElementById('modo-maquininha').classList.toggle('active', modo==='maquininha');
+  document.getElementById('modo-link').classList.toggle('active', modo==='link');
+
+  // Maquininha: up to 12x; Link: up to 12x (same here, but could differ)
+  renderBandeiras();
+  renderParcelas();
+}
+
+function toggleDebito() {
+  debitoMode = !debitoMode;
+  const tag = document.getElementById('debito-tag');
+  const taxa = TAXAS[selectedBandeira]?.debito || 0;
+  if (debitoMode) {
+    tag.style.background = 'rgba(48,209,88,0.25)';
+    // show debito result directly
+    const valor = parseFloat(document.getElementById('sim-valor').value);
+    if (valor > 0) {
+      const total = valor * (1 + taxa/100);
+      document.getElementById('sim-table-section').style.display = '';
+      document.getElementById('parcelas-tbody').innerHTML = `
+        <tr class="selected-row" onclick="selectParcela('debito')">
+          <td>Débito</td>
+          <td>${taxa.toFixed(2).replace('.',',')}%</td>
+          <td>R$ ${fmtMoney(total)}</td>
+          <td>R$ ${fmtMoney(total)}</td>
+        </tr>`;
+      selectedParcela = 'debito';
+      document.getElementById('sim-whats-section').style.display = '';
+      renderWhats();
+    }
+  } else {
+    tag.style.background = '';
+    selectedParcela = null;
+    renderParcelas();
+  }
+}
+
+function selectBandeira(b) {
+  selectedBandeira = b;
+  debitoMode = false;
+  selectedParcela = null;
+  renderBandeiras();
+  renderParcelas();
+}
+
+function renderParcelas() {
+  const raw = document.getElementById('sim-valor').value;
+  const valor = parseFloat(raw);
+  if (!raw || isNaN(valor) || valor <= 0) {
+    document.getElementById('sim-table-section').style.display = 'none';
+    document.getElementById('sim-whats-section').style.display = 'none';
+    return;
+  }
+  document.getElementById('sim-table-section').style.display = '';
+  const taxas = TAXAS[selectedBandeira];
+  const maxN = Object.keys(taxas).filter(k=>k!=='debito').length;
+  let html = '';
+  for (let n = 1; n <= maxN; n++) {
+    const taxa = taxas[n] || 0;
+    const total = valor * (1 + taxa / 100);
+    const parcela = total / n;
+    const isSelected = selectedParcela === n;
+    html += `<tr class="${isSelected ? 'selected-row' : ''}" onclick="selectParcela(${n})">
+      <td>${n}x</td>
+      <td>${taxa === 0 ? 'Sem juros' : taxa.toFixed(2).replace('.', ',') + '%'}</td>
+      <td>R$ ${fmtMoney(total)}</td>
+      <td>R$ ${fmtMoney(parcela)}</td>
+    </tr>`;
+  }
+  document.getElementById('parcelas-tbody').innerHTML = html;
+  if (selectedParcela) renderWhats();
+}
+
+function selectParcela(n) {
+  selectedParcela = n;
+  renderParcelas();
+  document.getElementById('sim-whats-section').style.display = '';
+  renderWhats();
+  document.getElementById('sim-whats-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function fmtMoney(v) {
+  return v.toFixed(2).replace('.', ',').replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+function renderWhats() {
+  if (!selectedParcela) return;
+  const valor = parseFloat(document.getElementById('sim-valor').value);
+  if (!valor || isNaN(valor)) return;
+
+  const taxa = TAXAS[selectedBandeira][selectedParcela];
+  const total = valor * (1 + taxa / 100);
+  const parcela = total / selectedParcela;
+
+  const modelo = document.getElementById('wa-modelo').value || 'MODELO';
+  const cor = document.getElementById('wa-cor').value;
+  const bateria = document.getElementById('wa-bateria').value;
+  const codigo = document.getElementById('wa-codigo').value;
+  const garantia = document.getElementById('wa-garantia').value || '6';
+  const bandLabel = BANDEIRA_LABEL[selectedBandeira];
+
+  let msg = '';
+  if (codigo) msg += codigo + '\n';
+  msg += 'SEMINOVO\n';
+  msg += '* Garantia de ' + garantia + ' meses pela loja\n';
+  msg += ' \n';
+  msg += '📱' + modelo.toUpperCase() + '\n';
+  if (cor) msg += '* ' + cor + '\n';
+  if (bateria) msg += '🔋' + bateria + '%\n';
+  msg += ' \n';
+  msg += 'PAGAMENTO\n';
+  msg += '💵 R$ ' + fmtMoney(valor) + ' ou \n';
+  if (selectedParcela === 'debito') {
+    msg += '💳 Débito R$ ' + fmtMoney(total) + ' no ' + bandLabel + ' (' + selectedModo === 'link' ? 'Link' : 'Maquininha' + ')';
+  } else if (selectedParcela === 1) {
+    msg += '💳 À vista R$ ' + fmtMoney(total) + ' no ' + bandLabel;
+  } else {
+    const modoLabel = selectedModo === 'link' ? ' (Link)' : '';
+    msg += '💳 ' + selectedParcela + 'x *R$ ' + fmtMoney(parcela) + '* (' + fmtMoney(total) + ') no ' + bandLabel + modoLabel;
+  }
+
+  document.getElementById('whats-preview').textContent = msg;
+  document.getElementById('copy-btn').textContent = '📋 Copiar para WhatsApp';
+  document.getElementById('copy-btn').style.background = '#25D366';
+}
+
+function copyWhats() {
+  const text = document.getElementById('whats-preview').textContent;
+  if (!text || text === 'Preencha os campos acima...') return;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copiado!';
+    btn.style.background = 'var(--green)';
+    setTimeout(() => {
+      btn.textContent = '📋 Copiar para WhatsApp';
+      btn.style.background = '#25D366';
+    }, 2000);
+  }).catch(() => {
+    // fallback for older browsers
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta);
+    ta.select(); document.execCommand('copy');
+    document.body.removeChild(ta);
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = '✓ Copiado!';
+    setTimeout(() => { btn.textContent = '📋 Copiar para WhatsApp'; }, 2000);
+  });
+}
+</script>
+</body>
+</html>
